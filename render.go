@@ -13,7 +13,7 @@ type frame struct {
 	// an array of indexes into the color array (our raw color pointers, if you will)
 	palette [][]int
 	// our final color
-	pixels [][]*color.RGBA64
+	pixels [][]color.RGBA64
 	// based on zoom, the min/max values we will use to calculate the mandelbrot
 	xMin float64
 	xMax float64
@@ -40,9 +40,8 @@ func renderFrame(frameNumberChannel chan int) {
 		f.init(frameNumber)
 		f.fillPalette()
 		f.antialias()
-		f.save()
+		fileSaverChannel <- f
 
-		time.Sleep(1 * time.Second)
 		duration := time.Now().Sub(startTime)
 		fmt.Printf("Finished %d : aaDirect %d : aaSuper %d : duration %v\n", f.frameNumber, f.aaDirect, f.aaSuper, duration)
 	}

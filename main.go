@@ -25,6 +25,8 @@ const (
 	// So we'll move the image a bit to zoom into something interesting
 	centerX = -0.743643887037158704752191506114774
 	centerY = 0.131825904205311970493132056385139
+
+	superSampleLen = 4
 )
 
 var (
@@ -35,6 +37,10 @@ var (
 	// used to signify when the goroutine is finished
 	doneChannel = make(chan int, numProcesses)
 
+	// we'll use a separate goroutine for file saves
+	fileSaverChannel = make(chan *frame, numProcesses*10)
+	fileSaverDone    = make(chan int)
+
 	// the horizontal mandelbrot range - calculated from the vertical range and the aspect ratio
 	xMin float64
 	xMax float64
@@ -43,7 +49,7 @@ var (
 	logEscapeRadius = math.Log(2)
 
 	// an array of point multipliers to move a point a little for antialiasing
-	rads []complex128
+	rads [superSampleLen]complex128
 
 	// the rate at which to magnify per frame
 	magnificationFactor float64
@@ -90,6 +96,9 @@ func main() {
 		go renderFrame(workChannel)
 	}
 
+	// a single goprocess for file saves
+	go saveImage(fileSaverChannel)
+
 	// fill pipe with frame number (basically work-id)
 	for frameNumber := frameStart; frameNumber <= frameEnd; frameNumber++ {
 		workChannel <- frameNumber
@@ -103,6 +112,12 @@ func main() {
 	for i := 1; i <= numProcesses; i++ {
 		<-doneChannel
 	}
+
+	// since all the renderers are done, close the file saver
+	close(fileSaverChannel)
+
+	// and wait for any outstanding file saves
+	<-fileSaverDone
 
 }
 
@@ -122,9 +137,6 @@ func init() {
 
 	xMin = hCenter - sz/2
 	xMax = hCenter + sz/2
-
-	// setup pixel multipliers
-	rads = make([]complex128, 4)
 
 	rads[0] = complex(-1, -1)
 	rads[1] = complex(-1, 1)

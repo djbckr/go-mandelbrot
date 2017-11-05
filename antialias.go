@@ -5,12 +5,12 @@ import "image/color"
 func (f *frame) antialias() {
 
 	// allocate the actual color pixels we are setting
-	f.pixels = make([][]*color.RGBA64, xSize)
+	f.pixels = make([][]color.RGBA64, xSize)
 	for k := range f.pixels {
-		f.pixels[k] = make([]*color.RGBA64, ySize)
+		f.pixels[k] = make([]color.RGBA64, ySize)
 	}
 
-	z := make([]int, len(rads))
+	var z [superSampleLen]int
 	xSizeMinus1 := xSize - 1
 	ySizeMinus1 := ySize - 1
 
@@ -19,7 +19,7 @@ func (f *frame) antialias() {
 
 			// outer edge; nothing to do
 			if x == 0 || x == xSizeMinus1 || y == 0 || y == ySizeMinus1 {
-				f.pixels[x][y] = &colors[f.palette[x][y]]
+				f.pixels[x][y] = colors[f.palette[x][y]]
 				continue
 			}
 
@@ -33,11 +33,11 @@ func (f *frame) antialias() {
 			// If so, resample, otherwise just set the pixel to the palette color
 			if needAntiAlias(z) {
 				var accumulator int
-				f.pixels[x][y], accumulator = performAntiAlias(0, f.pointX(x), f.pointY(y), f.xDistance/2, f.yDistance/2)
+				accumulator = performAntiAlias(0, f.pointX(x), f.pointY(y), f.xDistance/2, f.yDistance/2, &f.pixels[x][y])
 				f.aaSuper += accumulator
 			} else {
 				f.aaDirect++
-				f.pixels[x][y] = &colors[f.palette[x][y]]
+				f.pixels[x][y] = colors[f.palette[x][y]]
 			}
 
 		}
@@ -45,20 +45,20 @@ func (f *frame) antialias() {
 
 }
 
-func performAntiAlias(depth int, xf, yf, xDistance, yDistance float64) (rslt *color.RGBA64, numSupers int) {
+func performAntiAlias(depth int, xf, yf, xDistance, yDistance float64, target *color.RGBA64) (numSupers int) {
 	numSupers = 0
 
 	// resample surrounding area, keeping track of where the points were
-	points := make([]complex128, len(rads))
-	superSamples := make([]*color.RGBA64, len(rads))
-	superIndexes := make([]int, len(rads))
+	var points [superSampleLen]complex128
+	var superSamples [superSampleLen]color.RGBA64
+	var superIndexes [superSampleLen]int
 
 	for k, v := range rads {
 		xg := xf + (xDistance * real(v))
 		yg := yf + (yDistance * imag(v))
 		points[k] = complex(xg, yg)
 		superIndexes[k] = mandelbrot(points[k])
-		superSamples[k] = &colors[superIndexes[k]]
+		superSamples[k] = colors[superIndexes[k]]
 		numSupers++
 	}
 
@@ -67,17 +67,17 @@ func performAntiAlias(depth int, xf, yf, xDistance, yDistance float64) (rslt *co
 	if needAntiAlias(superIndexes) && depth < 3 {
 		var accumulator int
 		for k, v := range points {
-			superSamples[k], accumulator = performAntiAlias(depth+1, real(v), imag(v), xDistance/2, yDistance/2)
+			accumulator = performAntiAlias(depth+1, real(v), imag(v), xDistance/2, yDistance/2, &superSamples[k])
 			numSupers += accumulator
 		}
 	}
 
-	rslt = avgSamples(superSamples)
+	avgSamples(superSamples, target)
 
 	return
 }
 
-func needAntiAlias(z []int) bool {
+func needAntiAlias(z [superSampleLen]int) bool {
 	var zDist int // distance between two points
 	var zK int    // prior value
 	for k, v := range z {
@@ -113,7 +113,7 @@ func needAntiAlias(z []int) bool {
 	return false
 }
 
-func avgSamples(z []*color.RGBA64) *color.RGBA64 {
+func avgSamples(z [superSampleLen]color.RGBA64, target *color.RGBA64) {
 
 	lenZ := float64(len(z))
 
@@ -128,9 +128,9 @@ func avgSamples(z []*color.RGBA64) *color.RGBA64 {
 		b1 += int(v.B)
 	}
 
-	return &color.RGBA64{
-		uint16(float64(r1) / lenZ),
-		uint16(float64(g1) / lenZ),
-		uint16(float64(b1) / lenZ),
-		0xFFFF}
+	target.R = uint16(float64(r1) / lenZ)
+	target.G = uint16(float64(g1) / lenZ)
+	target.B = uint16(float64(b1) / lenZ)
+	target.A = 0xFFFF
+
 }
