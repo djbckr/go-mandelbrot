@@ -24,23 +24,6 @@ type jColor struct {
 
 type jColors []jColor
 
-func loadColorFile(colorFile string) {
-	raw, err := ioutil.ReadFile(colorFile)
-	if err != nil {
-		fmt.Println(err.Error())
-		fmt.Println("Sticking with pre-determined colors")
-		return
-	}
-
-	var vColors jColors
-	json.Unmarshal(raw, &vColors)
-
-	fmt.Printf("Loaded %d colors\n", len(vColors))
-	if len(vColors) > 1 {
-		parseColors(vColors)
-	}
-}
-
 func parseColors(c jColors) {
 	for k := range c {
 		c[k].R = c[k].R << 8
@@ -91,6 +74,23 @@ func parseColors(c jColors) {
 
 	if cpCount != valuesPer {
 		fmt.Printf("color interpolation error: %d", cpCount)
+	}
+}
+
+func loadColorFile(colorFile string) {
+	raw, err := ioutil.ReadFile(colorFile)
+	if err != nil {
+		fmt.Println(err.Error())
+		fmt.Println("Sticking with pre-determined colors")
+		return
+	}
+
+	var vColors jColors
+	json.Unmarshal(raw, &vColors)
+
+	fmt.Printf("Loaded %d colors\n", len(vColors))
+	if len(vColors) > 1 {
+		parseColors(vColors)
 	}
 }
 
