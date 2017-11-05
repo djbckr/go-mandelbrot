@@ -32,9 +32,7 @@ func (f *frame) antialias() {
 			// Check if surrounding pixels differ too much.
 			// If so, resample, otherwise just set the pixel to the palette color
 			if needAntiAlias(z) {
-				var accumulator int
-				accumulator = performAntiAlias(0, f.pointX(x), f.pointY(y), f.xDistance/2, f.yDistance/2, &f.pixels[x][y])
-				f.aaSuper += accumulator
+				f.aaSuper += performAntiAlias(0, f.pointX(x), f.pointY(y), f.xDistance/2, f.yDistance/2, &f.pixels[x][y])
 			} else {
 				f.aaDirect++
 				f.pixels[x][y] = colors[f.palette[x][y]]
@@ -65,10 +63,8 @@ func performAntiAlias(depth int, xf, yf, xDistance, yDistance float64, target *c
 	// Check if super-sampled pixels differ too much, or if our depth is shallow enough.
 	// If so, resample the superSamples again from each point, otherwise we are done
 	if needAntiAlias(superIndexes) && depth < 3 {
-		var accumulator int
 		for k, v := range points {
-			accumulator = performAntiAlias(depth+1, real(v), imag(v), xDistance/2, yDistance/2, &superSamples[k])
-			numSupers += accumulator
+			numSupers += performAntiAlias(depth+1, real(v), imag(v), xDistance/2, yDistance/2, &superSamples[k])
 		}
 	}
 
