@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"os"
+	"path"
 	"runtime"
 )
 
@@ -73,7 +75,8 @@ var (
 	xFSizeMinus1 float64
 	yFSizeMinus1 float64
 
-	colorFile string
+	colorFile       string
+	outputDirectory string
 )
 
 func main() {
@@ -89,7 +92,13 @@ func main() {
 		loadColorFile(colorFile)
 	}
 
-	fmt.Printf("xSize=%d : ySize=%d : magX=%f : frameStart=%d : frameEnd=%d : numFrames=%d\n", xSize, ySize, magnificationFactor, frameStart, frameEnd, numFrames)
+	err := os.MkdirAll(outputDirectory, os.ModeDir|os.ModePerm)
+	if err != nil {
+		println(err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("xSize=%d : ySize=%d : frameStart=%d : frameEnd=%d : numFrames=%d\n", xSize, ySize, frameStart, frameEnd, numFrames)
 
 	// setup go-routines that will take a queue of operations
 	for i := 1; i <= numProcesses; i++ {
@@ -129,6 +138,7 @@ func init() {
 	flag.IntVar(&frameStart, "frameStart", 1, "Which frame to start rendering.")                                                       // assume we're rendering all frames
 	flag.IntVar(&frameEnd, "frameEnd", 3600, "Which frame to end rendering")                                                           // assume we're rendering all frames
 	flag.IntVar(&xSize, "xSize", 3840, "Width of image in pixels; default is a 4k UHD image.")                                         // assume we're rendering 4k
+	flag.StringVar(&outputDirectory, "outDir", path.Join(".", "images"), "Specified output directory.")
 	flag.StringVar(&colorFile, "colorFile", "colors.json", "A color description file. The contents of this file is a single array, with objects of \"R\", \"G\", and \"B\" attributes. Each attribute can be 0 to 255.")
 
 	// calculate where xMin and xMax go, based on horizontal center between -2 and +0.5

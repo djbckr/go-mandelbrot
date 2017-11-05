@@ -6,13 +6,14 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"path"
 )
 
 func saveImage(ch chan *frame) {
 	// while channel is open...
 	for f := range ch {
 
-		fn := fmt.Sprintf("%04d", f.frameNumber) + ".png"
+		fn := path.Join(outputDirectory, fmt.Sprintf("%04d", f.frameNumber)+".png")
 
 		file, err := os.Create(fn)
 		if err != nil {
