@@ -28,6 +28,9 @@ type frame struct {
 	// the difference between xMin/xMax and yMin/yMax - a minor optimization to find a point
 	xDiff float64
 	yDiff float64
+
+	startTime time.Time
+	endTime   time.Time
 }
 
 func renderFrame(frameNumberChannel chan int) {
@@ -36,14 +39,13 @@ func renderFrame(frameNumberChannel chan int) {
 	for frameNumber := range frameNumberChannel {
 
 		f := &frame{}
-		startTime := time.Now()
+		f.startTime = time.Now()
 		f.init(frameNumber)
 		f.fillPalette()
 		f.antialias()
+		f.endTime = time.Now()
 		fileSaverChannel <- f
 
-		duration := time.Now().Sub(startTime)
-		fmt.Printf("Finished %d : aaDirect %d : aaSuper %d : duration %v\n", f.frameNumber, f.aaDirect, f.aaSuper, duration)
 	}
 
 	// channel has been closed; notifiy that this goroutine is finished
@@ -75,7 +77,7 @@ func (f *frame) init(fr int) {
 	f.xDistance = math.Abs(f.pointX(0) - f.pointX(1))
 	f.yDistance = math.Abs(f.pointY(0) - f.pointY(1))
 
-	fmt.Printf("Frame %d : zoomFactor %f\n", f.frameNumber, zoomFactor)
+	fmt.Printf("Starting Frame %d : zoomFactor %f\n", f.frameNumber, zoomFactor)
 
 }
 

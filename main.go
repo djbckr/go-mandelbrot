@@ -29,6 +29,7 @@ const (
 	centerY = 0.131825904205311970493132056385139
 
 	superSampleLen = 4
+	fileSaverProcs = 2
 )
 
 var (
@@ -41,7 +42,7 @@ var (
 
 	// we'll use a separate goroutine for file saves
 	fileSaverChannel = make(chan *frame, numProcesses*10)
-	fileSaverDone    = make(chan int)
+	fileSaverDone    = make(chan int, fileSaverProcs)
 
 	// the horizontal mandelbrot range - calculated from the vertical range and the aspect ratio
 	xMin float64
@@ -100,13 +101,15 @@ func main() {
 
 	fmt.Printf("xSize=%d : ySize=%d : frameStart=%d : frameEnd=%d : numFrames=%d\n", xSize, ySize, frameStart, frameEnd, numFrames)
 
-	// setup go-routines that will take a queue of operations
+	// setup goroutines that will take a queue of operations
 	for i := 1; i <= numProcesses; i++ {
 		go renderFrame(workChannel)
 	}
 
-	// a single goprocess for file saves
-	go saveImage(fileSaverChannel)
+	// setup some goroutines for file saving
+	for i := 1; i <= fileSaverProcs; i++ {
+		go saveImage(fileSaverChannel)
+	}
 
 	// fill pipe with frame number (basically work-id)
 	for frameNumber := frameStart; frameNumber <= frameEnd; frameNumber++ {
@@ -122,11 +125,13 @@ func main() {
 		<-doneChannel
 	}
 
-	// since all the renderers are done, close the file saver
+	// since all the renderers are done, close the file saver channel
 	close(fileSaverChannel)
 
 	// and wait for any outstanding file saves
-	<-fileSaverDone
+	for i := 1; i <= fileSaverProcs; i++ {
+		<-fileSaverDone
+	}
 
 }
 

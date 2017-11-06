@@ -7,12 +7,14 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 )
 
 func saveImage(ch chan *frame) {
 	// while channel is open...
 	for f := range ch {
 
+		fsStart := time.Now()
 		fn := path.Join(outputDirectory, fmt.Sprintf("%04d", f.frameNumber)+".png")
 
 		file, err := os.Create(fn)
@@ -36,6 +38,9 @@ func saveImage(ch chan *frame) {
 		if err := file.Close(); err != nil {
 			log.Fatal(err)
 		}
+
+		fsEnd := time.Now()
+		fmt.Printf("Finished %d : aaDirect %d : aaSuper %d : render %v : filesave %v\n", f.frameNumber, f.aaDirect, f.aaSuper, f.endTime.Sub(f.startTime), fsEnd.Sub(fsStart))
 	}
 
 	// indicate we are finished
